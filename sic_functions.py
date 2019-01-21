@@ -126,9 +126,6 @@ def cube_histogram(cube_ind, cube_dep, nbins, xbins, xrange=[-1000,1000], yrange
         cube_ind.data.mask[mask[0], mask[1], mask[2]] = True
         cube_dep.data.mask[mask[0], mask[1], mask[2]] = True
     
-    #if not sst_dep:
-    #    iris.save(cube_ind, '/home/users/mjrobert/hrcm/cache/malcolm/cube_ind.nc')
-    #    iris.save(cube_dep, '/home/users/mjrobert/hrcm/cache/malcolm/cube_dep.nc')
     cube_ind_data = cube_ind.data
     cube_dep_data = cube_dep.data
     

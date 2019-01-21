@@ -38,8 +38,10 @@ import calendar
 from scipy.interpolate import interp1d
 import cPickle as pickle #cPickle is an optimised version of Pickle and is O(100) times faster
 
-DATADIR = '/home/users/mjrobert/hrcm/cache/malcolm/HadISST2/1x1/processing_2018/'
-savedir = os.path.join(DATADIR, 'future')
+DATADIR = '/gws/nopw/j04/hrcm/cache/malcolm/HadISST2/1x1/processing_2018/'
+savedir = os.path.join(DATADIR, 'future2')
+#DATADIR_new = '/group_workspaces/jasmin2/primavera1/WP6/forcing/FutureSSTandSeaice/'
+savedir_ice = os.path.join(DATADIR, 'future2')
 YEARS = range(1950, 2016)
 CODE_DIR = '/home/users/mjrobert/workspace/primavera-code-repository/HighResMIP/'
 
@@ -160,13 +162,15 @@ def read_histogram(year):
             mean_freq_cmip5_all[:, :, :, im] = mean_freq_model
         mean_freq_cmip5 = np.mean(mean_freq_cmip5_all, axis = 3)
 
-        # by 2030 we want to be using the CMIP5 relationship completely, at 2016 we want to use HadISST2.2
-        if year < 2020:
+        # by 2030 we want to be using the CMIP5 relationship completely, at 2015 we want to use HadISST2.2
+        year_start_linear = 2016
+        year_end_linear = 2050
+        if year < year_start_linear:
             mean_freq[year] = mean_freq_hadisst2
-        elif year > 2030:
+        elif year > year_end_linear:
             mean_freq[year] = mean_freq_cmip5
         else:
-            weight = float(year - 2020) / float(2030 - 2020)
+            weight = float(year - year_start_linear) / float(year_end_linear - year_start_linear)
             year_weight_hadisst = (1.0 - weight)
             year_weight_cmip5 = weight
             mean_freq[year] = year_weight_hadisst * mean_freq_hadisst2 + year_weight_cmip5 * mean_freq_cmip5
@@ -309,6 +313,10 @@ def merge_first_year_to_historic(future_fname):
         sic_future.data[iday, :, :] = sic_hist.data[-1, :, :] * (1.0 - weight) + sic_future_month.data[iday, :, :] * weight
 
     iris.save(sic_future, future_fname[:-3]+'_merged.nc')
+    cmd = 'mv '+future_fname+' '+future_fname[:-3]+'_unmerged.nc'
+    os.system(cmd)
+    cmd = 'mv '+future_fname[:-3]+'_merged.nc'+' '+future_fname
+    os.system(cmd)
 
 def generate_future_siconc_from_sst(mean_freq_days, year, months, ice_mask, ice_mask_min, ice_ref):
     '''
@@ -317,7 +325,7 @@ def generate_future_siconc_from_sst(mean_freq_days, year, months, ice_mask, ice_
     #dir_in = '/group_workspaces/jasmin2/primavera1/WP6/forcing/HadISST2_submit/v1.2/'
     if year >= 2016:
         #future_sst_file = os.path.join(DATADIR, 'future', 'full_sst_1950_2100_025_daily_fixed.nc')
-        future_sst_file = os.path.join(DATADIR, 'future', 'sst', 'future_sst_'+str(year)+'_025_daily_v1.nc')
+        future_sst_file = os.path.join(savedir, 'sst', 'future_sst_'+str(year)+'_025_daily_v1.nc')
     else:
         if len(months) == 12:
             future_sst_file = os.path.join(DATADIR, 'hadisst2_tos_daily_'+str(year)+'_fixed_day_v1_monthly_under_ice.nc')
@@ -326,7 +334,7 @@ def generate_future_siconc_from_sst(mean_freq_days, year, months, ice_mask, ice_
         else:
             raise Exception('Must be either 12 months or 1 '+str(len(months)))
 
-    future_siconc_file = os.path.join(savedir, 'siconc', 'future_siconc_{}_025_daily_v1.nc')
+    future_siconc_file = os.path.join(savedir_ice, 'siconc', 'future_siconc_{}_025_daily_v1.nc')
     print 'read sst ',future_sst_file
     full_sst = iris.load_cube(future_sst_file)
 
@@ -408,7 +416,8 @@ def generate_future_siconc_from_sst(mean_freq_days, year, months, ice_mask, ice_
         new_sice_month.append(siconc_template)
     new_sice_cube = new_sice_month.concatenate_cube()
     add_metadata(new_sice_cube)
-    iris.save(new_sice_cube, fout_year)
+    print 'write to ',fout_year
+    iris.save(new_sice_cube, fout_year, unlimited_dimensions = ['time'], fill_value = 1.0e20)
 
     return fout_year
 

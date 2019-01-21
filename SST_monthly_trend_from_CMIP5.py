@@ -78,11 +78,11 @@ variable1['sic'] = 'sea_ice_area_fraction'
 variable2['sic'] = 'sea_ice_area_fraction'
 YEAR_LAST_RCP85 = '2120'
 
-HadISST_ref = '/home/users/mjrobert/hrcm/cache/malcolm/HadISST2.1.0.0/HadISST.2.1.0.0_single_sst.nc'
+HadISST_ref = '/gws/nopw/j04/hrcm/cache/malcolm/HadISST2.1.0.0/HadISST.2.1.0.0_single_sst.nc'
 
-DATADIR = '/home/users/mjrobert/hrcm/cache/malcolm/HighResMIP/sst_forcing'
-savedir = os.path.join(DATADIR, 'processing_ocean_v2')
-savedir_v0 = os.path.join(DATADIR, 'processing_ocean')
+DATADIR = '/gws/nopw/j04/hrcm/cache/malcolm/HighResMIP/sst_forcing'
+savedir = os.path.join(DATADIR, 'processing_ocean_v3')
+savedir_v0 = os.path.join(DATADIR, 'processing_ocean_v2')
 if not os.path.exists(savedir): os.mkdir(savedir)
 
 YEARS_after_1870 = iris.Constraint(coord_values = {'year' : lambda l : l >= 1870})
@@ -434,8 +434,8 @@ def make_trend_files_for_models(model, CMIP5_ref):
         #sst_cube_full.data[sst_cube_full.data < -1.8] = -1.8
         print 'sst_cube_full ',sst_cube_full
             
-        # extract all years 10 years either side of 2017 (where we want delta to be about zero)
-        year_centre = 2017
+        # extract all years 10 years either side of 2015 (where we want delta to be about zero)
+        year_centre = 2015
         YEARS_between = iris.Constraint(coord_values = {'year' : lambda l : year_centre - 10 <= l <= year_centre + 10})
             
         sst_cube = sst_cube_full.extract(YEARS_between)
@@ -778,7 +778,7 @@ def calculate_mean_delta(CMIP5_ref):
 
     modelmean_file_out = os.path.join(savedir, 'cmip5_modelmean'+model_trend_ending+'_on_hadisst2_'+model_subset+'.nc')
     cube_list_new = iris.cube.CubeList()
-    hadisst2_mask = iris.load_cube('/home/users/mjrobert/hrcm/cache/malcolm/HadISST2.2.2.0/hadisst_0to360_alldays_sst_1963.nc','sea_surface_temperature')[0]
+    hadisst2_mask = iris.load_cube('/gws/nopw/j04/hrcm/cache/malcolm/HadISST2.2.2.0/hadisst_0to360_alldays_sst_1963.nc','sea_surface_temperature')[0]
 
     if not os.path.exists(modelmean_file_out):
         fnames = []

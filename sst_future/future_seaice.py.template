@@ -1,0 +1,136 @@
+#!/bin/env python2.7
+'''
+NAME:
+    sst_ice_maximum_hadisst2
+
+DESCRIPTION:
+    calculate a mask indicating where sea-ice exists (at any time, for given month)
+    will use this mask to constrain future sea-ice to be within region defined
+
+USAGE: 
+    Execute as a script from command line
+
+AUTHOR:
+    Malcolm Roberts (hadom)
+
+LAST MODIFIED:
+    2015-06-22
+
+'''
+
+import iris.coord_categorisation as icc
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import iris
+import iris.analysis
+import iris.experimental as ie
+import iris.analysis as ia
+import scipy.linalg
+import iris.io
+import subprocess
+import iris.plot as iplt
+from scipy.stats import norm
+import datetime
+import sys
+import glob
+import cPickle as pickle #cPickle is an optimised version of Pickle and is O(100) times faster
+from shutil import copy
+
+DATADIR = '/home/users/mjrobert/hrcm/cache/malcolm/HadISST2/1x1/'
+savedir = os.path.join(DATADIR, 'processing_new')
+YEARS = range(1950, 2016)
+
+month_jan = iris.Constraint(coord_values = {'month_number' : lambda l : l == 1})
+npole = iris.Constraint(coord_values = {'latitude' : lambda l : 50 < (l.point) <= 90})
+spole = iris.Constraint(coord_values = {'latitude' : lambda l : -90 < (l.point) <= -50})
+pole_title = ['Arctic, daily HadISST2, 1962-1989','Antarctic, daily HadISST2, 1962-1989']
+
+# need to run from the output directory
+# assumes that years in file names are real years
+BIN_MAX_MIN = [0.05, 1.05]
+BIN_SIZE = 0.05
+xbins=np.arange(BIN_MAX_MIN[0], BIN_MAX_MIN[1], BIN_SIZE)
+NBINS = len(xbins)-1
+
+def set_up_historgam():
+    histogram_freq = np.ma.zeros((NBINS, 12, 2))
+    mean_freq = np.ma.zeros((NBINS, 12, 2))
+    histogram_freq[...] = np.ma.masked
+    
+    histogram_freq_temp = np.ma.zeros((NBINS, 12, 2, len(YEARS)))
+    mean_freq_temp = np.ma.zeros((NBINS, 12, 2, len(YEARS)))
+    histogram_freq_temp[...] = np.ma.masked
+    
+    filename_pickle = 'sice_sst_relationship.pkl'
+    fh = open(filename_pickle, 'r')
+    mean_freq = pickle.load(fh)
+    fh.close()
+
+
+def ice_maximum_extent():
+    '''
+    Generate a 0/1 mask for any point which has ice concentration > 0 over time period
+    '''
+    cube_siconc = iris.load_cube(os.path.join(DATADIR, 'hadisst2_monthly_1950_2015_siconc.nc'))
+    icc.add_year(cube_siconc, 'time', name = 'year')
+    
+    for iy, year in enumerate(YEARS):
+        print year
+        year_con = iris.Constraint(coord_values = {'year' : lambda l : l == int(year)})
+        cube_yr = cube_siconc.extract(year_con)
+        if iy == 0:
+            cube_mask = cube_yr.copy()
+            cube_mask.data[...] = 0.0
+            some_ice = np.where((cube_yr.data > 0.0) & (cube_yr.data <= 1.0))
+            cube_mask.data[some_ice[0], some_ice[1], some_ice[2]] = 1.0
+        for im in range(0,12):
+            print 'month ',im+1
+            more_ice = np.where((cube_mask.data[im, :, :] == 0.0) & (cube_yr.data[im, :, :] > 0.0) & (cube_yr.data[im, :, :] <= 1.0))
+            print more_ice
+            cube_mask.data[im, more_ice[0], more_ice[1]] = 1.0
+            
+    return cube_mask
+
+def generate_future_siconc_from_sst():
+    '''
+    Use the maximum ice extent, the SST and the pdf relationship between SST and sea-ice to generate a future sea ice concentration
+    '''
+    siconc_max = iris.load_cube(savedir+'/maximum_ice_extent_1950_2015.nc')
+    full_sst = iris.load_cube(savedir+'/full_sst_1950_2100.nc')
+
+    past_siconc = iris.load_cube(DATADIR+'/hadisst2_monthly_1950_2015_siconc.nc')
+    copy(savedir+'/full_sst_1950_2100.nc', savedir+'/full_siconc_1950_2100.nc')
+    
+    full_siconc = iris.load_cube(savedir+'/full_siconc_1950_2100.nc')
+    try:
+        icc.add_year(full_siconc, 'time', name = 'year')
+    except:
+        pass
+
+    years = range(full_siconc.coord('year').points[0], full_siconc.coord('year').points[-1]+1)
+    years = range(2016, 2100)
+
+    new_sice_l = iris.cube.CubeList()
+    for iy, year in enumerate(years):
+        print year
+        year_con = iris.Constraint(coord_values = {'year' : lambda l : l == int(year)})
+        sst_this_year = full_sst.extract(year_con)
+        siconc_template = full_siconc.extract(year_con)
+        siconc_template.data[...] = 0.0
+
+        for im in range(0,12):
+            full_sice = np.where((sst_this_year.data[im, :, :] < -1.5) & (siconc_max.data[im, :, :] == 1.0))
+            siconc_template.data[im, full_sice[0], full_sice[1]] = 1.0
+        new_sice_l.append(siconc_template)
+
+    new_sice = new_sice_l.concatenate_cube()
+    return new_sice
+            
+        
+
+if __name__ == '__main__':
+    
+    future_ice_cube = generate_future_siconc_from_sst()
+    iris.save(future_ice_cube, savedir+'/future_ice_conc.nc')
+    

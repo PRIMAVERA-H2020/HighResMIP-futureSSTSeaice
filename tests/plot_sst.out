@@ -1,0 +1,58 @@
+nohup: ignoring input
+/usr/lib/python2.7/site-packages/iris/cube.py:3174: UserWarning: Collapsing spatial coordinate u'latitude' without weighting
+  warnings.warn(msg.format(coord.name()))
+/usr/lib/python2.7/site-packages/iris/coords.py:1210: UserWarning: Collapsing a non-contiguous coordinate. Metadata may not be fully descriptive for u'latitude'.
+  warnings.warn(msg.format(self.name()))
+/usr/lib/python2.7/site-packages/iris/coords.py:1210: UserWarning: Collapsing a non-contiguous coordinate. Metadata may not be fully descriptive for u'longitude'.
+  warnings.warn(msg.format(self.name()))
+cm sea_surface_temperature / (degC)    (time: 12419)
+     Dimension coordinates:
+          time                           x
+     Auxiliary coordinates:
+          day_of_year                    x
+          month                          x
+          year                           x
+     Scalar coordinates:
+          latitude: 0.0 degrees, bound=(-4.875, 4.875) degrees
+          longitude: 215.0 degrees, bound=(190.125, 239.875) degrees
+     Attributes:
+          Conventions: CF-1.5
+          NCO: 4.7.3
+          activity_id: input4MIPs
+          comment: 
+          contact: Met Office (john.kennedy@metoffice.gov.uk)
+          creation_date: 2017-03-09T12:00:00Z
+          data_structure: grid
+          dataset_category: SSTsAndSeaIce
+          dataset_version_number: 2.2.0.0-r0
+          frequency: day
+          further_info_url: http://collab.knmi.nl/highresmip
+          grid: 0.25x0.25 degree latitude x longitude
+          grid_label: gn
+          institution: Met Office Hadley Centre, Fitzroy Road, Exeter, Devon, EX1 3PB, UK
+          institution_id: MOHC
+          license: HadISST2.2.0.0 is subject to Crown copyright protection. The material may...
+          mip_era: CMIP6
+          nco_openmp_thread_number: 1
+          nominal_resolution: 25 km
+          product: observations
+          realm: ocean
+          references: Kennedy et al, 2017: The Met Office Hadley Centre Sea Ice and Sea-Surface...
+          source: HadISST2.2.0.0 realisation 0 derived from pentad data
+          source_id: MOHC-HadISST-2-2-0-0-r0
+          supplementary_information: 
+          table_id: input4MIPs
+          target_mip: HighResMIP
+          title: HadISST2.2.0.0-r0-0.25x0.25 dataset prepared by Met Office for CMIP6 H...
+          variable_id: tos
+          version: 20170201
+     Cell methods:
+          mean: time, lat, lon
+          mean: latitude, longitude
+[2016 2016 2016 ... 2049 2049 2049]
+Traceback (most recent call last):
+  File "plot_sst_timeseries.py", line 227, in <module>
+    plot_point_series()
+  File "plot_sst_timeseries.py", line 214, in plot_point_series
+    plt.savefig('./hist_future2_sst_region_ts_'+pole+'_fixed.png')
+NameError: global name 'pole' is not defined

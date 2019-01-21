@@ -17,7 +17,7 @@ import calendar
 from scipy.interpolate import interp1d
 import sic_functions
 
-DATADIR = '/home/users/mjrobert/hrcm/cache/malcolm/HadISST2/1x1/processing_2018/'
+DATADIR = '/gws/nopw/j04/hrcm/cache/malcolm/HadISST2/1x1/processing_2018/'
 BIN = define_histogram_bins()
 
 npole_lat = iris.Constraint(coord_values = {'latitude' : lambda l : 50 < (l.point) <= 90})

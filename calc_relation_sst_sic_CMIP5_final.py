@@ -16,7 +16,7 @@ import cPickle as pickle #cPickle is an optimised version of Pickle and is O(100
 import calendar
 from scipy.interpolate import interp1d
 
-DATADIR = '/home/users/mjrobert/hrcm/cache/malcolm/HadISST2/1x1/processing_2018/'
+DATADIR = '/gws/nopw/j04/hrcm/cache/malcolm/HadISST2/1x1/processing_2018/'
 BIN = {}; BIN['SST'] = {}; BIN['SICE'] = {}
 BIN['SST']['MAX_MIN'] = [-2.8, 5.0]
 BIN['SST']['SIZE'] = 0.02
@@ -362,7 +362,7 @@ def process_sst_seaice(dir_in, years, months, year_last_real_data, sst_fixed_yea
     sic_functions.calc_sst_func_sice_relationship(dir_in, model, filename_sst_func_siconc_month_pickle, years, fnames_sst, fnames_ice)
 
 if __name__ == '__main__':
-    dir_in = '/home/users/mjrobert/hrcm/cache/malcolm/HighResMIP/sst_forcing/processing_ocean_v2/'
+    dir_in = '/gws/nopw/j04/hrcm/cache/malcolm/HighResMIP/sst_forcing/processing_ocean_v2/'
     year_last_real_data = '2015'
     #years = range(2015, 2016)
     years = range(2010, 2020)

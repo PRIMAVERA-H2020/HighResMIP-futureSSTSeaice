@@ -78,14 +78,12 @@ import cf_units, datetime
 import sst_future as sf
 
 DATADIR_orig = '/group_workspaces/jasmin2/primavera1/WP6/forcing/HadISST2_submit/v1.2/'
-DATADIR = '/home/users/mjrobert/hrcm/cache/malcolm/HadISST2/1x1/processing_2018'  # from 1962-2009, centred on 2014
-DATADIR_CMIP = '/home/users/mjrobert/hrcm/cache/malcolm/HadISST2/1x1/'  # from 1962-2009, centred on 2014
-DATADIR_CMIP = '/home/users/mjrobert/hrcm/cache/malcolm/HighResMIP/sst_forcing/processing_ocean/'
-CMIP5_trend_file = '/home/users/mjrobert/hrcm/cache/malcolm/HighResMIP/sst_forcing/processing_ocean_v2/cmip5_modelmean_month_annual_1950_2120_delta_on_hadisst2_IPSL-CM5A-LR_HadGEM2-ES_GFDL-CM3_ACCESS1-0_ACCESS1-3_MPI-ESM-MR_CNRM-CM5_IPSL-CM5A-MR_running_monthlymean_025_iris.nc'
+DATADIR = '/gws/nopw/j04/hrcm/cache/malcolm/HadISST2/1x1/processing_2018'  # from 1962-2009, centred on 2014
+CMIP5_trend_file = '/gws/nopw/j04/hrcm/cache/malcolm/HighResMIP/sst_forcing/processing_ocean_v3/cmip5_modelmean_month_annual_1950_2120_delta_on_hadisst2_IPSL-CM5A-LR_HadGEM2-ES_GFDL-CM3_ACCESS1-0_ACCESS1-3_MPI-ESM-MR_CNRM-CM5_IPSL-CM5A-MR_running_monthlymean_025_iris.nc'
 
 SST_MIN = -2.0
 
-SAVEDIR = DATADIR+'/future/'
+SAVEDIR = DATADIR+'/future2/'
 if not os.path.exists(SAVEDIR): 
     os.makedirs(SAVEDIR)
 if not os.path.exists(SAVEDIR+'sst'): 
@@ -133,7 +131,7 @@ def extract_cube_years(cube, start_yr, end_yr):
 
 def aggregate_mean(cube, coord = 'year'):
     '''
-    Calculate annueal means
+    Calculate annual means
     '''
     cube_agg_by_coord = cube.aggregated_by(coord, iris.analysis.MEAN)
     print 'sst_cube_year ',cube_agg_by_coord
@@ -169,7 +167,7 @@ def calc_variability(cube, monthly_mean, year, years_from_start, save = True, we
     #sst_variability = cube.copy()
     #print 'sst_variability ',sst_variability
     
-    hadisst2_mask = iris.load_cube('/home/users/mjrobert/hrcm/cache/malcolm/HadISST2.2.2.0/hadisst_0to360_alldays_sst_1963.nc','sea_surface_temperature')[0]
+    hadisst2_mask = iris.load_cube('/gws/nopw/j04/hrcm/cache/malcolm/HadISST2.2.2.0/hadisst_0to360_alldays_sst_1963.nc','sea_surface_temperature')[0]
 
     sst_var_yr_l = iris.cube.CubeList()
     sst_var_yr_day_l = iris.cube.CubeList()
@@ -272,12 +270,12 @@ def calc_variability(cube, monthly_mean, year, years_from_start, save = True, we
 
     if save:
         savefile = os.path.join(SAVEDIR, 'sst', 'sst_variability_'+str(year)+'_025_daily_fixed_v1.nc')
-        iris.save(sst_var_yr_day, savefile)
+        iris.save(sst_var_yr_day, savefile, unlimited_dimensions = ['time'], fill_value = 1.0e20)
         savefile = os.path.join(SAVEDIR, 'sst', 'sst_variability_'+str(year)+'_025_month_fixed_v1.nc')
-        iris.save(sst_var_yr, savefile)
+        iris.save(sst_var_yr, savefile, unlimited_dimensions = ['time'], fill_value = 1.0e20)
     else:
         savefile = os.path.join(SAVEDIR, 'sst', 'sst_temp_'+str(year)+'_025_daily_fixed_v1.nc')
-        iris.save(sst_var_yr, savefile)
+        iris.save(sst_var_yr, savefile, unlimited_dimensions = ['time'], fill_value = 1.0e20)
 
                                  
     return sst_var_yr, sst_var_yr_day
@@ -355,6 +353,7 @@ def get_daily_interpolated_data(m, sst_variability, sst_variability_mon, future_
     Calculate daily interpolated values of SST
     Have 12 months of monthly_mean_recent files
     Have year -1 , year and year + 1 of cmip5_yr
+    Assuming that the months are in the correct 1-12 order (used by indexing). 
     '''
     con_mon = iris.Constraint(coord_values = {'month' : lambda l : l == m+1})
     con_yr_last = iris.Constraint(coord_values = {'year' : lambda l : l == year_last_decade})
@@ -405,12 +404,20 @@ def get_daily_interpolated_data(m, sst_variability, sst_variability_mon, future_
         w1 = (1.0 - weight) * 0.5
         w2 = 0.5
         w3 = weight * 0.5
+        if cmip5_yr_monm1.coord('month').points[mm1] != mm1 + 1:
+            raise Exception('CMIP5 month data not the right month '+str(cmip5_yr_monm1.coord('month').points[mm1])+', '+str(mm1+1))
         cmip5_day = w1 * cmip5_yr_monm1.data[mm1, :, :] + w2 * cmip5_yr.data[m, :, :] + w3 * cmip5_yr_monp1.data[mp1, :, :]
+        if monthly_mean_mm1.coord('month').points[mm1] != mm1+1:
+            raise Exception('monthly mean mm1 month not right month ')
+        if monthly_mean_c.coord('month').points[m] != m+1:
+            raise Exception('monthly mean mm1 month not right month ')
         mon_day = w1 * monthly_mean_mm1.data[mm1, :, :] + w2 * monthly_mean_c.data[m, :, :] + w3 * monthly_mean_mp1.data[mp1, :, :]
 
-        if adjust_jan and m <= 4:
+        # adjust the start of the merged year from real data
+        nmonths_adjust = 1
+        if adjust_jan and m <= nmonths_adjust-1:
             m_5_days = [31, 29, 31, 30, 31] # Jan-Apr
-            mon_day_weight = float((sum(m_5_days[:m]) + iday)) / float(sum(m_5_days))  # 0-1
+            mon_day_weight = float((sum(m_5_days[:m]) + iday)) / float(sum(m_5_days[:nmonths_adjust]))  # 0-1
             print 'month, day, mon_day_weight ', m, iday, mon_day_weight
             # merge the monthly anomaly over 5 months to gradually bring it into the first year of new data from the old obs data
             # needs to start at exactly end 2015, and end at the end-of-month 5 (m=4) monthly anomaly
@@ -479,7 +486,7 @@ def calc_future_sst(cube, observed_trend_file, running_mean_file, datafiles):
        running_mean_file: file names containing the running mean of seasonal variability
     '''
     print 'start calc_future_sst'
-    hadisst2_mask = iris.load_cube('/home/users/mjrobert/hrcm/cache/malcolm/HadISST2.2.2.0/hadisst_0to360_alldays_sst_1963.nc','sea_surface_temperature')[0]
+    hadisst2_mask = iris.load_cube('/gws/nopw/j04/hrcm/cache/malcolm/HadISST2.2.2.0/hadisst_0to360_alldays_sst_1963.nc','sea_surface_temperature')[0]
     mask = np.where(hadisst2_mask.data.mask == True)
 
     cube.coord('time').bounds = None
@@ -544,13 +551,13 @@ def calc_future_sst(cube, observed_trend_file, running_mean_file, datafiles):
             # we also need to get the last day of variability from the previous year, to make the variability consistent across the boundary
             if yr == year1:
                 print 'yr, year1, calc local means, anoms ',yr,year1
-                monthly_mean_previous = adjust_monthly_mean_edge(running_mean_recent, datafiles[2015], adjust_dec = True)
+                monthly_mean_previous = adjust_monthly_mean_edge(running_mean_recent, datafiles[int(year_data_end)], adjust_dec = True)
                 monthly_mean_next = running_mean_recent
-                cube_2015 = iris.load_cube(datafiles[2015])
+                cube_2015 = iris.load_cube(datafiles[int(year_data_end)])
                 cube_2015.convert_units('degC')
                 icc.add_year(cube_2015, 'time')
                 print 'cube 2015 ',cube_2015
-                sst_variability_mon_yrm1, sst_variability_yrm1 = calc_variability(cube_2015, monthly_mean_previous, 2015, years_from_start, save = False, weighted = False)
+                sst_variability_mon_yrm1, sst_variability_yrm1 = calc_variability(cube_2015, monthly_mean_previous, int(year_data_end), years_from_start, save = False, weighted = False)
                 adjust_jan = True
             else:
                 monthly_mean_previous = running_mean_recent
@@ -566,7 +573,7 @@ def calc_future_sst(cube, observed_trend_file, running_mean_file, datafiles):
             future_yr = future_yr_l.concatenate_cube()
             add_metadata(future_yr)
             savefile = os.path.join(future_file_output)
-            iris.save(future_yr, savefile)
+            iris.save(future_yr, savefile, unlimited_dimensions = ['time'], fill_value = 1.0e20)
 
     for c in [cube,future_sst]:
         try:
@@ -587,7 +594,7 @@ def calculate_time_components(datafiles, start_year, end_year):
         files.append(datafiles[year])
 
     sst_cube_full_l = iris.load(files, callback = callback_attrib)
-    print sst_cube_full_l
+    print 'in calc time components, sst_cube_full_l ',sst_cube_full_l
     iris.util.describe_diff(sst_cube_full_l[0], sst_cube_full_l[10])
     sst_cube_full = sst_cube_full_l.concatenate_cube()
 
@@ -605,8 +612,8 @@ def calculate_time_components(datafiles, start_year, end_year):
     print 'sst_cube ',sst_cube_t1_t2
 
     # calculate the mean over each month
-    print 'calculate monthly means'
     monthly_mean_file = SAVEDIR+'/sst_monthly_mean_025_fixed_'+str(start_year)+'-'+str(end_year)+'.nc'
+    print 'calculate monthly means into file ', monthly_mean_file
     if not os.path.exists(monthly_mean_file):
         monthly_mean = aggregate_mean(sst_cube_t1_t2, coord = 'month')
         print monthly_mean
@@ -654,7 +661,7 @@ def monthly_running_mean(datafiles, start_year, end_year):
             files.append(datafiles[year])
 
     sst_cube_full_l = iris.load(files, callback = callback_attrib)
-    print sst_cube_full_l
+    print 'in monthly running mean, sst_cube_full_l ',sst_cube_full_l
     c = sst_cube_full_l.concatenate_cube()
 
     # add various Aux coordinates to make it easier to access times
@@ -721,7 +728,8 @@ def work():
     Main function to produce the future SST dataset
     '''
     runid = 'HadISST'
-    start_year = 1976
+    start_year = 1976 # this is a La Nina, may cause problem with 2015 end
+    start_year = 1980 # this is fairly neutral Nino
     end_year = 2015
     #end_year = 1980
     datafiles = {}
